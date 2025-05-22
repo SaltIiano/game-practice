@@ -11,9 +11,17 @@ class Settings:
         self.bullet_color = (60, 60, 60)
         self.bullets_allowed = 3
 
+        self.alien_width = 50
+        self.alien_height = 50
+        self.alien_points = 50
+
         self.fleet_drop_speed = 10
         self.speedup_scale = 1.1
         self.score_scale = 1.5
+
+        self.boss_speed = 1
+        self.boss_points = 100
+
         self.initialize_dynamic_settings()
 
     def initialize_dynamic_settings(self):

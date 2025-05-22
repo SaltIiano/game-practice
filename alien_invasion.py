@@ -9,13 +9,14 @@ from ship import Ship
 from bullet import Bullet
 from alien import Alien
 from utils import hide_mouse_cursor
+from boss import Boss
 
 class AlienInvasion:
     def __init__(self):
         pygame.init()
         self.settings = Settings()
 
-        self.screen = pygame.display.set_mode((1200, 800))
+        self.screen = pygame.display.set_mode((self.settings.screen_width, self.settings.screen_height))
         pygame.display.set_caption('Alien Invasion')
 
         self.stats = GameStats(self)
@@ -23,11 +24,14 @@ class AlienInvasion:
         self.ship = Ship(self)
         self.bullets = pygame.sprite.Group()
         self.aliens = pygame.sprite.Group()
+        self.bosses = pygame.sprite.Group()
         self.create_fleet_of_aliens()
         self.play_button = Button(self, 'Play')
 
+        self.wave_counter = 0
+
     def run_game(self):
-        print("Game started")
+        print("Game started") 
         while True:
             self.respond_to_events()
 
@@ -83,8 +87,8 @@ class AlienInvasion:
         elif event.key == pygame.K_LEFT:
             self.ship.moving_left = True
         elif event.key == pygame.K_q:
-            print("Exiting game")  # Добавьте вывод в консоль
-            sleep(5)  # Добавьте задержку перед закрытием окна
+            print("Exiting game") 
+            sleep(5) 
             sys.exit()
         elif event.key == pygame.K_SPACE:
             self.fire_bullet()
@@ -112,12 +116,21 @@ class AlienInvasion:
 
     def manage_bullet_alien_collision(self):
         collisions = pygame.sprite.groupcollide(self.bullets, self.aliens, True, True)
-
         if collisions:
             for aliens in collisions.values():
                 self.stats.score += self.settings.alien_points * len(aliens)
             self.score_board.prep_score()
             self.score_board.check_high_score()
+
+        collisions = pygame.sprite.groupcollide(self.bullets, self.bosses, True, False)
+        if collisions:
+            for boss in self.bosses:
+                boss.health -= 1
+                if boss.health <= 0:
+                    self.bosses.remove(boss)
+                    self.stats.score += self.settings.boss_points
+                    self.score_board.prep_score()
+                    self.score_board.check_high_score()
 
         if not self.aliens:
             self.increase_level()
@@ -130,37 +143,16 @@ class AlienInvasion:
         self.stats.level += 1
         self.score_board.prep_level()
 
-    def _update_aliens(self):
-        self._check_fleet_edges()
-        self.aliens.update()
+        self.wave_counter += 1
 
-        if pygame.sprite.spritecollideany(self.ship, self.aliens):
-            self._ship_hit()
+        if self.wave_counter % 3 == 0:
+            self.create_boss()
 
-        self._check_aliens_bottom()
+    def create_boss(self):
+        self.bosses.empty()
 
-    def _check_aliens_bottom(self):
-        screen_rect = self.screen.get_rect()
-        for alien in self.aliens.sprites():
-            if alien.rect.bottom >= screen_rect.bottom:
-                self._ship_hit()
-                break
-
-    def _ship_hit(self):
-        if self.stats.ships_left > 0:
-            self.stats.ships_left -= 1
-            self.score_board.prep_ships()
-
-            self.aliens.empty()
-            self.bullets.empty()
-
-            self.create_fleet_of_aliens()
-            self.ship.align_center()
-
-            sleep(0.5)
-        else:
-            self.stats.game_active = False
-            pygame.mouse.set_visible(True)
+        boss = Boss(self)
+        self.bosses.add(boss)
 
     def create_fleet_of_aliens(self):
         alien = Alien(self)
@@ -195,12 +187,49 @@ class AlienInvasion:
             alien.rect.y += self.settings.fleet_drop_speed
         self.settings.fleet_direction *= -1
 
+    def _update_aliens(self):
+        self._check_fleet_edges()
+        self.aliens.update()
+
+        self.bosses.update()
+
+        if pygame.sprite.spritecollideany(self.ship, self.aliens):
+            self._ship_hit()
+
+        self._check_aliens_bottom()
+
+    def _check_aliens_bottom(self):
+        screen_rect = self.screen.get_rect()
+        for alien in self.aliens.sprites():
+            if alien.rect.bottom >= screen_rect.bottom:
+                self._ship_hit()
+                break
+
+    def _ship_hit(self):
+        if self.stats.ships_left > 0:
+            self.stats.ships_left -= 1
+            self.score_board.prep_ships()
+
+            self.aliens.empty()
+            self.bullets.empty()
+
+            self.create_fleet_of_aliens()
+            self.ship.align_center()
+
+            sleep(0.5)
+        else:
+            self.stats.game_active = False
+            pygame.mouse.set_visible(True)
+
     def _update_screen(self):
         self.screen.fill(self.settings.bg_color)
         self.ship.draw()
         for bullet in self.bullets.sprites():
             bullet.draw_bullet()
         self.aliens.draw(self.screen)
+        
+        if self.bosses:
+            self.bosses.draw(self.screen)
 
         self.score_board.show_score()
 
