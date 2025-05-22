@@ -1,7 +1,6 @@
 import pygame
 import sys
 
-
 def manage_events(ship):
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
